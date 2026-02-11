@@ -52,15 +52,16 @@ python scripts/fetch_listing_pages.py data/listing_urls.json -o data/pages.json
 # From DB (no file needed)
 python scripts/fetch_listing_pages.py --from-db
 python scripts/fetch_listing_pages.py --from-db --city Bremen --max-concurrent 10
+python scripts/fetch_listing_pages.py --from-db --limit 5   # fetch only first 5 URLs (saves tokens)
 ```
 
 **Output:** Saved to DB (`listing_pages`). Each row: `source`, `url`, `external_id`, `content_type` (`html` or `text`), `content`, `created_at`. Use `-o` to also export JSON.
 
 | Mode | Flag | content_type | Description |
 |------|------|--------------|-------------|
-| Default | *(none)* | `html` | Main content HTML only |
+| Default | *(none)* | `text` | Plain text only (smallest; recommended for DB) |
+| Main content HTML | `--html` | `html` | Main content HTML only |
 | Full page | `--full` | `html` | Full page HTML |
-| Text only | `--text` | `text` | Plain text only (smallest) |
 
 For full DB schema and how to inspect data, see **[README-database.md](README-database.md)**.
 

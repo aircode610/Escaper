@@ -12,7 +12,7 @@ SQLite database for listings, listing URLs, and listing pages. File: **`data/lis
 |-------|--------|
 | **listings** | Parsed listings (address, price, rooms, description, raw JSON). One row per listing per (source, external_id). |
 | **listing_urls** | Raw listing URLs and IDs from search-page scraping. Written by `fetch_listing_urls.py`; read by `fetch_listing_pages.py --from-db`. |
-| **listing_pages** | Fetched HTML or plain text for each listing URL. Written by `fetch_listing_pages.py`. |
+| **listing_pages** | Fetched content per listing URL. Written by `fetch_listing_pages.py` (default: plain text; use `--html`/`--full` for HTML). |
 
 All tables have `created_at` and use **latest-first** ordering (DESC).
 

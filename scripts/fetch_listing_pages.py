@@ -5,10 +5,11 @@ Read URLs from a JSON file or from the DB (--from-db).
 Usage:
   python scripts/fetch_listing_pages.py data/listing_urls.json
   python scripts/fetch_listing_pages.py --from-db [--city Bremen]
+  python scripts/fetch_listing_pages.py --from-db --limit 5
   python scripts/fetch_listing_pages.py --from-db -o data/pages.json --max-concurrent 10
 
-Input: JSON file with array of {source, url, external_id}, or --from-db to use listing_urls table (optional --city).
-Output: Saved to DB (listing_pages). Use -o to also export JSON. --full = full HTML; default = main content only; --text = plain text only.
+Input: JSON file or --from-db (optional --city). Use --limit N to fetch only the first N URLs (saves tokens).
+Output: Saved to DB (listing_pages). Default = plain text only. Use --html/--full for HTML.
 """
 
 import argparse
@@ -35,14 +36,17 @@ async def main():
     parser.add_argument("--city", default=None, help="When --from-db: only URLs for this city (default: all)")
     parser.add_argument("-o", "--output", default=None, help="Optional: also write JSON to this path")
     parser.add_argument("--max-concurrent", type=int, default=5, help="Max concurrent requests (default: 5)")
-    parser.add_argument("--full", action="store_true", help="Store full page HTML (default: main content only)")
-    parser.add_argument("--text", action="store_true", help="Store only extracted plain text (no HTML)")
+    parser.add_argument("--limit", type=int, default=None, metavar="N", help="Fetch only the first N URLs (saves API tokens; default: all)")
+    parser.add_argument("--html", action="store_true", help="Store main-content HTML instead of plain text")
+    parser.add_argument("--full", action="store_true", help="Store full page HTML (implies --html)")
     args = parser.parse_args()
+    # Default: text mode. --html = main content HTML, --full = full page HTML
+    store_html = args.html or args.full
 
     if args.from_db:
         if args.urls_file:
             print("Ignoring urls_file when --from-db is set.", file=sys.stderr)
-        entries = db.get_listing_urls(city=args.city)
+        entries = db.get_listing_urls(city=args.city, limit=args.limit)
         if not entries:
             print("No listing URLs in DB" + (f" for city={args.city}" if args.city else ""), file=sys.stderr)
             sys.exit(1)
@@ -60,6 +64,8 @@ async def main():
             print("Expected JSON array of {source, url, external_id}", file=sys.stderr)
             sys.exit(1)
         entries = raw
+        if args.limit is not None:
+            entries = entries[: args.limit]
 
     api_key = config.get_scrapfly_api_key()
     if not api_key:
@@ -69,7 +75,8 @@ async def main():
     urls = [e["url"] for e in entries if isinstance(e.get("url"), str)]
     if len(urls) != len(entries):
         print("Skipping entries without valid 'url'", file=sys.stderr)
-    print(f"Fetching {len(urls)} pages (max_concurrent={args.max_concurrent}) ...", flush=True)
+    limit_note = f" (limit={args.limit})" if args.limit else ""
+    print(f"Fetching {len(urls)} pages (max_concurrent={args.max_concurrent}){limit_note} ...", flush=True)
 
     done = 0
     failed = 0
@@ -89,22 +96,12 @@ async def main():
     )
     url_to_html = {p["url"]: p["html"] for p in pages}
 
-    content_type = "text" if args.text else "html"
     results = []
     for e in entries:
         if not isinstance(e.get("url"), str):
             continue
         html = url_to_html.get(e["url"])
-        if args.text:
-            text = extract_text(html, e.get("source"), main_content_only=True) if html else None
-            results.append({
-                "source": e.get("source"),
-                "url": e["url"],
-                "external_id": e.get("external_id"),
-                "content_type": "text",
-                "content": text,
-            })
-        else:
+        if store_html:
             if html and not args.full:
                 html = extract_main_content(html, e.get("source"))
             results.append({
@@ -113,6 +110,15 @@ async def main():
                 "external_id": e.get("external_id"),
                 "content_type": "html",
                 "content": html,
+            })
+        else:
+            text = extract_text(html, e.get("source"), main_content_only=True) if html else None
+            results.append({
+                "source": e.get("source"),
+                "url": e["url"],
+                "external_id": e.get("external_id"),
+                "content_type": "text",
+                "content": text,
             })
 
     db.init_db()
