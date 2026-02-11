@@ -7,7 +7,7 @@ import config  # noqa: E402
 
 from langgraph.graph import END, START, StateGraph
 
-from agent.nodes import extract_listing_node, scam_check_node
+from agent.nodes import extract_listing_node, enricher_node, scam_check_node
 from agent.state import AgentState
 
 config.setup_langsmith_tracing()
@@ -26,10 +26,12 @@ def build_graph():
 
     graph.add_node("extract_listing", extract_listing_node)
     graph.add_node("scam_check", scam_check_node)
+    graph.add_node("enricher", enricher_node)
 
     graph.add_edge(START, "extract_listing")
     graph.add_conditional_edges("extract_listing", _after_extract_route, {"scam_check": "scam_check", "__end__": END})
-    graph.add_edge("scam_check", END)
+    graph.add_edge("scam_check", "enricher")
+    graph.add_edge("enricher", END)
 
     return graph.compile()
 

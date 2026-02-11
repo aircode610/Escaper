@@ -55,6 +55,25 @@ def ensure_listings_has_scam(conn: sqlite3.Connection) -> None:
     conn.commit()
 
 
+def ensure_listings_has_enrichment(conn: sqlite3.Connection) -> None:
+    """Add enricher columns if missing (stdlib-only migration)."""
+    cur = conn.execute("SELECT name FROM pragma_table_info('listings')")
+    names = {row[0] for row in cur.fetchall()}
+    for col, typ in [
+        ("dist_university_walk_mins", "REAL"),
+        ("dist_university_transit_mins", "REAL"),
+        ("dist_hbf_walk_mins", "REAL"),
+        ("dist_hbf_transit_mins", "REAL"),
+        ("description_en", "TEXT"),
+        ("neighbourhood_vibe", "TEXT"),
+        ("nearby_places", "TEXT"),
+        ("value_score", "REAL"),
+    ]:
+        if col not in names:
+            conn.execute(f"ALTER TABLE listings ADD COLUMN {col} {typ}")
+    conn.commit()
+
+
 def get_table_names(conn: sqlite3.Connection) -> list[str]:
     cur = conn.execute(
         "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name"
@@ -117,7 +136,9 @@ def show_listings_detail(conn: sqlite3.Connection, limit: int | None = None) -> 
     """Pretty-print listings table (description truncated)."""
     sql = """
         SELECT id, source, url, external_id, address, price_eur, price_warm_eur, rooms,
-               description, details, scam_score, scam_flags, scam_reasoning, created_at
+               description, details, scam_score, scam_flags, scam_reasoning,
+               dist_university_walk_mins, dist_university_transit_mins, dist_hbf_walk_mins, dist_hbf_transit_mins,
+               description_en, neighbourhood_vibe, nearby_places, value_score, created_at
         FROM listings
         ORDER BY created_at DESC
         """
@@ -146,6 +167,14 @@ def show_listings_detail(conn: sqlite3.Connection, limit: int | None = None) -> 
             scam_score,
             scam_flags,
             scam_reasoning,
+            dist_uni_walk,
+            dist_uni_transit,
+            dist_hbf_walk,
+            dist_hbf_transit,
+            description_en,
+            neighbourhood_vibe,
+            nearby_places,
+            value_score,
             created_at,
         ) = row
         print("-" * 60)
@@ -166,6 +195,16 @@ def show_listings_detail(conn: sqlite3.Connection, limit: int | None = None) -> 
             print(f"  scam_flags     {scam_flags}")
         if scam_reasoning:
             print(f"  scam_reasoning {scam_reasoning[:300]}{'...' if len(scam_reasoning) > 300 else ''}")
+        if dist_uni_walk is not None or dist_uni_transit is not None:
+            print(f"  dist_uni      walk {dist_uni_walk} min | transit {dist_uni_transit} min")
+        if dist_hbf_walk is not None or dist_hbf_transit is not None:
+            print(f"  dist_hbf      walk {dist_hbf_walk} min | transit {dist_hbf_transit} min")
+        if value_score is not None:
+            print(f"  value_score    {value_score}")
+        if neighbourhood_vibe:
+            print(f"  neighbourhood  {neighbourhood_vibe[:300]}{'...' if len(neighbourhood_vibe) > 300 else ''}")
+        if description_en:
+            print(f"  description_en ({len(description_en)} chars)")
         if description:
             print(f"  description  ({len(description)} chars)")
             for line in description.strip().split("\n")[:15]:
@@ -219,6 +258,7 @@ def main():
             ensure_listings_has_price_warm(conn)
             ensure_listings_has_details(conn)
             ensure_listings_has_scam(conn)
+            ensure_listings_has_enrichment(conn)
             show_listings_detail(conn, limit=args.limit)
         else:
             show_table(conn, args.table, limit=args.limit)

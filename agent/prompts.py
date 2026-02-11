@@ -112,3 +112,64 @@ def format_scam_check_user(
         details=details or "(none)",
         description=description or "(none)",
     )
+
+
+# ---------- Enricher: translate, neighbourhood vibe, value score ----------
+
+ENRICHER_SYSTEM = """You are an assistant for a rental listing enricher targeting English-speaking renters in Germany.
+
+You will receive:
+1. Listing fields (address, price, rooms, description, details) — some may be in German.
+2. Travel times from the listing to Constructor University (Bremen) and to Bremen Hauptbahnhof (walking and public transit at 9am).
+
+Tasks:
+- description_en: Translate the listing description to clear, natural English. If the description is already in English or empty, return as-is or empty string.
+- neighbourhood_vibe: Write 2–4 short sentences in English summarizing the neighbourhood: what it's like to live there. Mention walking/transit times to the university and HBF if useful. Be concise and helpful for a student or young professional.
+- value_score: A number from 0.0 to 1.0 indicating how good the value is given the rent (cold/warm), size, rooms, and what you get (furnished, location, transport). 1.0 = exceptional value, 0.5 = average, 0.0 = poor value. Consider German rental market norms.
+
+Output only valid JSON: { "description_en": "...", "neighbourhood_vibe": "...", "value_score": 0.0-1.0 }. No markdown."""
+
+ENRICHER_USER = """## Listing
+Address: {address}
+Cold rent: {price_cold} €/month | Warm rent: {price_warm} €/month
+Rooms: {rooms}
+Details: {details}
+
+Description (original):
+{description}
+
+## Travel times from listing
+To Constructor University (Bremen): walking {uni_walk_mins}, transit (9am weekday) {uni_transit_mins}
+To Bremen HBF: walking {hbf_walk_mins}, transit (9am weekday) {hbf_transit_mins}
+
+Return JSON only: description_en, neighbourhood_vibe, value_score."""
+
+
+def format_enricher_user(
+    address: str | None,
+    price_cold: float | None,
+    price_warm: float | None,
+    rooms: float | None,
+    details: str | None,
+    description: str | None,
+    uni_walk_mins: float | None,
+    uni_transit_mins: float | None,
+    hbf_walk_mins: float | None,
+    hbf_transit_mins: float | None,
+) -> str:
+    def _mins(m: float | None) -> str:
+        if m is None:
+            return "n/a"
+        return f"{int(round(m))} min"
+    return ENRICHER_USER.format(
+        address=address or "(not given)",
+        price_cold=price_cold if price_cold is not None else "—",
+        price_warm=price_warm if price_warm is not None else "—",
+        rooms=rooms if rooms is not None else "—",
+        details=details or "(none)",
+        description=description or "(none)",
+        uni_walk_mins=_mins(uni_walk_mins),
+        uni_transit_mins=_mins(uni_transit_mins),
+        hbf_walk_mins=_mins(hbf_walk_mins),
+        hbf_transit_mins=_mins(hbf_transit_mins),
+    )

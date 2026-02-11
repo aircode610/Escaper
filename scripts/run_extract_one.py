@@ -52,9 +52,11 @@ def main():
         else:
             msg = "Saved."
             if result.get("scam_error"):
-                msg += f" (scam check failed: {result['scam_error']})"
+                msg += f" (scam: {result['scam_error']})"
             elif result.get("scam_score") is not None:
-                msg += f" Scam score: {result['scam_score']:.2f}"
+                msg += f" scam={result['scam_score']:.2f}"
+            if result.get("enricher_error"):
+                msg += f" (enricher: {result['enricher_error']})"
             print(f"  {msg}", flush=True)
             ok += 1
 
