@@ -1,0 +1,6 @@
+# Env and API keys
+python-dotenv>=1.0.0
+
+# ScrapFly + parsing
+scrapfly-sdk[concurrency]>=0.8.24
+beautifulsoup4>=4.12.0
