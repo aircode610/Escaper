@@ -50,7 +50,12 @@ def main():
             print(f"  Error: {result['error']}", file=sys.stderr)
             err += 1
         else:
-            print(f"  Saved.", flush=True)
+            msg = "Saved."
+            if result.get("scam_error"):
+                msg += f" (scam check failed: {result['scam_error']})"
+            elif result.get("scam_score") is not None:
+                msg += f" Scam score: {result['scam_score']:.2f}"
+            print(f"  {msg}", flush=True)
             ok += 1
 
     print(f"\nDone: {ok} saved, {err} failed.", flush=True)

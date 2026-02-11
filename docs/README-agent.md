@@ -28,6 +28,18 @@ Extracted fields match the listings schema: `address`, `price_eur`, `price_warm_
 
 ---
 
+## Second node: scam check
+
+**Node:** `scam_check`
+
+- **Input (state):** Runs after `extract_listing` when extraction succeeded (`extracted` set, no `error`).
+- **Behaviour:** Uses Claude to assess the listing for scam indicators (emotional manipulation, linguistic issues, logical inconsistencies, missing red flags, too-good-to-be-true, known patterns). Returns a score 0.0–1.0 (0 = likely scam, 1 = likely legit), a list of flags, and brief reasoning.
+- **Output (state):** `scam_score`, `scam_flags`, `scam_reasoning`; also updates the same listing row in the DB with these fields. On failure, sets `scam_error`.
+
+Prompts are in `prompts.py` (`SCAM_CHECK_SYSTEM`, `SCAM_CHECK_USER`).
+
+---
+
 ## LangSmith tracing
 
 Follow the [Tracing quickstart](https://docs.langchain.com/langsmith/observability-quickstart) and [Trace with LangGraph](https://docs.langchain.com/langsmith/trace-with-langgraph):

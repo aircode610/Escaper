@@ -35,3 +35,80 @@ def format_extract_listing_user(source: str, url: str, content: str) -> str:
         url=url,
         content=content or "(no content)",
     )
+
+
+# ---------- Scam check ----------
+
+SCAM_CHECK_SYSTEM = """You are a German rental market expert detecting apartment scams.
+
+Analyze the listing and return a JSON object with scam assessment.
+
+## WHAT TO CHECK (things rules can't catch):
+
+### 1. EMOTIONAL MANIPULATION
+- Sob stories ("recently divorced", "inherited from grandma", "moving for work")
+- Urgency pressure ("many interested", "decide today", "last chance")
+- Too-perfect narrative that feels scripted
+
+### 2. LINGUISTIC ANALYSIS
+- Grammar inconsistent with claimed landlord profile
+- Google-translate artifacts in German text
+- Mix of formal/informal German that doesn't match
+- Copy-paste feel (generic, could apply to any apartment)
+
+### 3. LOGICAL INCONSISTENCIES
+- Luxury features at budget prices
+- Location doesn't match price (e.g. central Bremen for €400?)
+- Amenities don't match building type
+- Dates/availability don't make sense
+- Details contradict each other
+
+### 4. MISSING RED FLAGS
+- No mention of viewing/Besichtigung process
+- No landlord contact method
+- Vague about lease terms
+- Avoids standard rental process (no Schufa, no income proof mentioned)
+
+### 5. TOO GOOD TO BE TRUE
+- Furnished + cheap + central + modern + all-inclusive
+- "No questions asked" attitude
+- Unusually flexible on everything
+
+### 6. KNOWN SCAM PATTERNS
+- "I'm abroad, will send keys" narrative
+- Asks to move communication off-platform
+- Mentions Airbnb/booking.com for "security"
+- Requests deposit before viewing
+
+Output only valid JSON with: "score" (0.0 = likely scam, 1.0 = likely legit), "flags" (list of short flag strings), "reasoning" (brief explanation). No markdown."""
+
+SCAM_CHECK_USER = """## LISTING DATA:
+Address: {address}
+Cold Rent: €{price_cold}/month
+Warm Rent: €{price_warm}/month
+Rooms: {rooms}
+Details: {details}
+
+Description (German):
+{description}
+
+Respond with valid JSON only: {{ "score": 0.0-1.0, "flags": ["flag1", "flag2"], "reasoning": "Brief explanation" }}"""
+
+
+def format_scam_check_user(
+    address: str | None,
+    price_cold: float | None,
+    price_warm: float | None,
+    rooms: float | None,
+    details: str | None,
+    description: str | None,
+) -> str:
+    """Format the user prompt for scam check."""
+    return SCAM_CHECK_USER.format(
+        address=address or "(not given)",
+        price_cold=price_cold if price_cold is not None else "(not given)",
+        price_warm=price_warm if price_warm is not None else "(not given)",
+        rooms=rooms if rooms is not None else "(not given)",
+        details=details or "(none)",
+        description=description or "(none)",
+    )

@@ -3,6 +3,7 @@ SQLite storage for listings, listing URLs, and listing pages.
 All tables use created_at DESC for latest-first ordering.
 """
 
+import json
 import sqlite3
 from pathlib import Path
 
@@ -19,6 +20,9 @@ CREATE TABLE IF NOT EXISTS listings (
     rooms REAL,
     description TEXT,
     details TEXT,
+    scam_score REAL,
+    scam_flags TEXT,
+    scam_reasoning TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
@@ -86,6 +90,17 @@ def _migrate_listings_raw_to_details(conn: sqlite3.Connection) -> None:
         conn.commit()
 
 
+def _migrate_listings_add_scam(conn: sqlite3.Connection) -> None:
+    """Add scam_score, scam_flags, scam_reasoning if missing."""
+    cur = conn.execute("SELECT name FROM pragma_table_info('listings')")
+    names = {row[0] for row in cur.fetchall()}
+    for col in ("scam_score", "scam_flags", "scam_reasoning"):
+        if col not in names:
+            typ = "REAL" if col == "scam_score" else "TEXT"
+            conn.execute(f"ALTER TABLE listings ADD COLUMN {col} {typ}")
+    conn.commit()
+
+
 def init_db(db_path: str | Path = DEFAULT_DB_PATH) -> None:
     """Create DB file and all tables (listings, listing_urls, listing_pages) if they don't exist."""
     conn = _get_conn(db_path)
@@ -94,6 +109,7 @@ def init_db(db_path: str | Path = DEFAULT_DB_PATH) -> None:
         conn.commit()
         _migrate_listings_add_price_warm(conn)
         _migrate_listings_raw_to_details(conn)
+        _migrate_listings_add_scam(conn)
     finally:
         conn.close()
 
@@ -123,12 +139,12 @@ def get_table_columns(conn: sqlite3.Connection, table: str) -> list[str]:
 
 
 def insert_listing(conn: sqlite3.Connection, row: dict) -> None:
-    """Insert one listing (source, url, external_id; optional address, price_eur, price_warm_eur, rooms, description, details)."""
+    """Insert one listing (source, url, external_id; optional address, price_eur, price_warm_eur, rooms, description, details; scam_* filled later)."""
     conn.execute(
         """
         INSERT OR REPLACE INTO listings
-        (source, url, external_id, address, price_eur, price_warm_eur, rooms, description, details)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        (source, url, external_id, address, price_eur, price_warm_eur, rooms, description, details, scam_score, scam_flags, scam_reasoning)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             row.get("source"),
@@ -140,7 +156,29 @@ def insert_listing(conn: sqlite3.Connection, row: dict) -> None:
             row.get("rooms"),
             row.get("description"),
             row.get("details"),
+            row.get("scam_score"),
+            row.get("scam_flags"),
+            row.get("scam_reasoning"),
         ),
+    )
+
+
+def update_listing_scam(
+    conn: sqlite3.Connection,
+    source: str,
+    external_id: str,
+    score: float | None,
+    flags: list[str] | None,
+    reasoning: str | None,
+) -> None:
+    """Update scam assessment for a listing (by source + external_id). flags stored as JSON array string."""
+    flags_json = json.dumps(flags, ensure_ascii=False) if flags is not None else None
+    conn.execute(
+        """
+        UPDATE listings SET scam_score = ?, scam_flags = ?, scam_reasoning = ?
+        WHERE source = ? AND external_id = ?
+        """,
+        (score, flags_json, reasoning, source, external_id),
     )
 
 
@@ -156,7 +194,11 @@ def row_to_listing(row: tuple) -> dict:
         rooms,
         description,
         details,
+        scam_score,
+        scam_flags,
+        scam_reasoning,
     ) = row
+    flags = json.loads(scam_flags) if scam_flags else None
     return {
         "source": source,
         "url": url,
@@ -167,6 +209,9 @@ def row_to_listing(row: tuple) -> dict:
         "rooms": rooms,
         "description": description,
         "details": details,
+        "scam_score": scam_score,
+        "scam_flags": flags,
+        "scam_reasoning": scam_reasoning,
     }
 
 
@@ -178,7 +223,8 @@ def get_listings(
     conn = _get_conn(db_path)
     try:
         sql = """
-        SELECT source, url, external_id, address, price_eur, price_warm_eur, rooms, description, details
+        SELECT source, url, external_id, address, price_eur, price_warm_eur, rooms, description, details,
+               scam_score, scam_flags, scam_reasoning
         FROM listings
         ORDER BY created_at DESC
         """
