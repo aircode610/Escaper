@@ -16,6 +16,7 @@ class AgentState(TypedDict, total=False):
     - error: Error message if a step failed.
     - scam_score, scam_flags, scam_reasoning: Set by scam_check node.
     - scam_error: Error message if scam check failed.
+    - enricher_error: Error message if enricher node failed.
     """
 
     listing_page: dict[str, Any]
@@ -25,3 +26,4 @@ class AgentState(TypedDict, total=False):
     scam_flags: list[str]
     scam_reasoning: str
     scam_error: str
+    enricher_error: str

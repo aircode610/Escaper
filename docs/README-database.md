@@ -37,9 +37,17 @@ Parsed/structured listing data (e.g. for notifications or downstream processing)
 | `scam_score` | REAL | Scam assessment score 0.0–1.0 (0 = likely scam, 1 = likely legit); set by scam-check node. |
 | `scam_flags` | TEXT | JSON array of short flag strings from scam check (optional). |
 | `scam_reasoning` | TEXT | Brief explanation of scam assessment (optional). |
+| `dist_university_walk_mins` | REAL | Walking time to Constructor University (Bremen), minutes. |
+| `dist_university_transit_mins` | REAL | Public transit time (9am weekday) to Constructor University. |
+| `dist_hbf_walk_mins` | REAL | Walking time to Bremen HBF. |
+| `dist_hbf_transit_mins` | REAL | Public transit time (9am weekday) to Bremen HBF. |
+| `description_en` | TEXT | Listing description translated to English. |
+| `neighbourhood_vibe` | TEXT | Short English summary of the area and nearby places. |
+| `nearby_places` | TEXT | Reserved; currently unused (JSON array when used). |
+| `value_score` | REAL | Value-for-money score 0.0–1.0 from enricher. |
 | `created_at` | TEXT | Insert/update time, `datetime('now')`. |
 
-**Unique index:** `(source, external_id)` — same listing is updated in place (INSERT OR REPLACE). The extractor fills both cold and warm rent when present and writes a short details summary when useful. The scam-check node then updates scam_score, scam_flags, and scam_reasoning.
+**Unique index:** `(source, external_id)` — same listing is updated in place (INSERT OR REPLACE). The extractor fills both cold and warm rent and details; the scam-check node updates scam fields; the enricher node updates distance, translation, neighbourhood, and value_score (using Google Maps and Claude).
 
 ---
 

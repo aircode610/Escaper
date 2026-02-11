@@ -40,6 +40,27 @@ Prompts are in `prompts.py` (`SCAM_CHECK_SYSTEM`, `SCAM_CHECK_USER`).
 
 ---
 
+## Third node: enricher
+
+**Node:** `enricher`
+
+- **Input (state):** Runs after `scam_check`; uses `extracted` listing data.
+- **Behaviour:**
+  1. **Distances:** Google Maps Geocoding + Distance Matrix — walking and public transit (9am weekday) from listing address to Constructor University (Bremen) and to Bremen Hauptbahnhof.
+  2. **Nearby places:** Places API (Nearby Search) — restaurants, cafes, parks, supermarkets within ~15 min walk (~1.2 km).
+  3. **LLM:** Translates description to English (`description_en`), writes a short neighbourhood summary in English (`neighbourhood_vibe`), and assigns a value-for-money score 0–1 (`value_score`) given rent, size, and amenities.
+- **Output:** Updates the listing row with all enrichment fields. Sets `enricher_error` on failure.
+
+Requires **GOOGLE_MAPS_API_KEY** in `.env`. Enable in Google Cloud Console:
+- **Geocoding API** — address → coordinates
+- **Distance Matrix API** — walking times to university and HBF
+- **Directions API** — transit fallback (one route per destination)
+- **Routes API** — transit matrix (one request for all destinations)
+
+Maps client: `agent/maps_client.py`. Test with `python scripts/test_maps_client.py`.
+
+---
+
 ## LangSmith tracing
 
 Follow the [Tracing quickstart](https://docs.langchain.com/langsmith/observability-quickstart) and [Trace with LangGraph](https://docs.langchain.com/langsmith/trace-with-langgraph):

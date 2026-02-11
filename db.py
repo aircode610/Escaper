@@ -23,6 +23,14 @@ CREATE TABLE IF NOT EXISTS listings (
     scam_score REAL,
     scam_flags TEXT,
     scam_reasoning TEXT,
+    dist_university_walk_mins REAL,
+    dist_university_transit_mins REAL,
+    dist_hbf_walk_mins REAL,
+    dist_hbf_transit_mins REAL,
+    description_en TEXT,
+    neighbourhood_vibe TEXT,
+    nearby_places TEXT,
+    value_score REAL,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
@@ -101,6 +109,26 @@ def _migrate_listings_add_scam(conn: sqlite3.Connection) -> None:
     conn.commit()
 
 
+def _migrate_listings_add_enrichment(conn: sqlite3.Connection) -> None:
+    """Add enricher columns if missing."""
+    cur = conn.execute("SELECT name FROM pragma_table_info('listings')")
+    names = {row[0] for row in cur.fetchall()}
+    enrichment_cols = [
+        ("dist_university_walk_mins", "REAL"),
+        ("dist_university_transit_mins", "REAL"),
+        ("dist_hbf_walk_mins", "REAL"),
+        ("dist_hbf_transit_mins", "REAL"),
+        ("description_en", "TEXT"),
+        ("neighbourhood_vibe", "TEXT"),
+        ("nearby_places", "TEXT"),
+        ("value_score", "REAL"),
+    ]
+    for col, typ in enrichment_cols:
+        if col not in names:
+            conn.execute(f"ALTER TABLE listings ADD COLUMN {col} {typ}")
+    conn.commit()
+
+
 def init_db(db_path: str | Path = DEFAULT_DB_PATH) -> None:
     """Create DB file and all tables (listings, listing_urls, listing_pages) if they don't exist."""
     conn = _get_conn(db_path)
@@ -110,6 +138,7 @@ def init_db(db_path: str | Path = DEFAULT_DB_PATH) -> None:
         _migrate_listings_add_price_warm(conn)
         _migrate_listings_raw_to_details(conn)
         _migrate_listings_add_scam(conn)
+        _migrate_listings_add_enrichment(conn)
     finally:
         conn.close()
 
@@ -182,6 +211,46 @@ def update_listing_scam(
     )
 
 
+def update_listing_enrichment(
+    conn: sqlite3.Connection,
+    source: str,
+    external_id: str,
+    *,
+    dist_university_walk_mins: float | None = None,
+    dist_university_transit_mins: float | None = None,
+    dist_hbf_walk_mins: float | None = None,
+    dist_hbf_transit_mins: float | None = None,
+    description_en: str | None = None,
+    neighbourhood_vibe: str | None = None,
+    nearby_places: str | list | None = None,
+    value_score: float | None = None,
+) -> None:
+    """Update enrichment fields for a listing (by source + external_id). nearby_places stored as JSON string."""
+    if isinstance(nearby_places, list):
+        nearby_places = json.dumps(nearby_places, ensure_ascii=False)
+    conn.execute(
+        """
+        UPDATE listings SET
+            dist_university_walk_mins = ?, dist_university_transit_mins = ?,
+            dist_hbf_walk_mins = ?, dist_hbf_transit_mins = ?,
+            description_en = ?, neighbourhood_vibe = ?, nearby_places = ?, value_score = ?
+        WHERE source = ? AND external_id = ?
+        """,
+        (
+            dist_university_walk_mins,
+            dist_university_transit_mins,
+            dist_hbf_walk_mins,
+            dist_hbf_transit_mins,
+            description_en,
+            neighbourhood_vibe,
+            nearby_places,
+            value_score,
+            source,
+            external_id,
+        ),
+    )
+
+
 def row_to_listing(row: tuple) -> dict:
     """Convert a DB row (without id, created_at) to dict."""
     (
@@ -197,8 +266,17 @@ def row_to_listing(row: tuple) -> dict:
         scam_score,
         scam_flags,
         scam_reasoning,
+        dist_university_walk_mins,
+        dist_university_transit_mins,
+        dist_hbf_walk_mins,
+        dist_hbf_transit_mins,
+        description_en,
+        neighbourhood_vibe,
+        nearby_places,
+        value_score,
     ) = row
     flags = json.loads(scam_flags) if scam_flags else None
+    nearby = json.loads(nearby_places) if nearby_places else None
     return {
         "source": source,
         "url": url,
@@ -212,6 +290,14 @@ def row_to_listing(row: tuple) -> dict:
         "scam_score": scam_score,
         "scam_flags": flags,
         "scam_reasoning": scam_reasoning,
+        "dist_university_walk_mins": dist_university_walk_mins,
+        "dist_university_transit_mins": dist_university_transit_mins,
+        "dist_hbf_walk_mins": dist_hbf_walk_mins,
+        "dist_hbf_transit_mins": dist_hbf_transit_mins,
+        "description_en": description_en,
+        "neighbourhood_vibe": neighbourhood_vibe,
+        "nearby_places": nearby,
+        "value_score": value_score,
     }
 
 
@@ -224,7 +310,9 @@ def get_listings(
     try:
         sql = """
         SELECT source, url, external_id, address, price_eur, price_warm_eur, rooms, description, details,
-               scam_score, scam_flags, scam_reasoning
+               scam_score, scam_flags, scam_reasoning,
+               dist_university_walk_mins, dist_university_transit_mins, dist_hbf_walk_mins, dist_hbf_transit_mins,
+               description_en, neighbourhood_vibe, nearby_places, value_score
         FROM listings
         ORDER BY created_at DESC
         """
