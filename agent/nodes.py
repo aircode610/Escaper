@@ -32,7 +32,10 @@ class ExtractedListing(BaseModel):
     price_warm_eur: float | None = Field(default=None, description="Monthly warm rent (Warmmiete) in EUR")
     rooms: float | None = Field(default=None, description="Number of rooms (e.g. 2.5)")
     description: str | None = Field(default=None, description="Main listing description text")
-    raw: dict = Field(default_factory=dict, description="Extra key-value pairs from the ad; never null")
+    details: str | None = Field(
+        default=None,
+        description="Short human-readable summary of important extra details (area, heating, condition, availability, deposit, pets, etc.). One or two sentences or bullet-style phrases. Empty string if nothing.",
+    )
 
 
 # ---------- Node: extract one listing page and add to listings ----------
@@ -79,7 +82,7 @@ def extract_listing_node(state: AgentState) -> dict:
                     "price_warm_eur": None,
                     "rooms": None,
                     "description": None,
-                    "raw": None,
+                    "details": None,
                 },
             )
             conn.commit()
@@ -106,7 +109,7 @@ def extract_listing_node(state: AgentState) -> dict:
         "price_warm_eur": out.price_warm_eur,
         "rooms": out.rooms,
         "description": out.description or None,
-        "raw": out.raw or {},
+        "details": out.details or None,
     }
 
     conn = db.get_connection()

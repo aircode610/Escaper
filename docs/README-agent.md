@@ -24,7 +24,7 @@ The agent is a LangGraph workflow that processes listing pages and populates the
 - **Behaviour:** Uses Claude (Anthropic) to extract structured fields from the page text, then inserts (or replaces) a row in **listings**.
 - **Output (state):** `extracted` (the row written to DB), or `error` if something failed.
 
-Extracted fields match the listings schema: `address`, `price_eur`, `rooms`, `description`, `raw` (JSON). The node fills `source`, `url`, `external_id` from the page.
+Extracted fields match the listings schema: `address`, `price_eur`, `price_warm_eur`, `rooms`, `description`, `details` (human-readable summary). The node fills `source`, `url`, `external_id` from the page.
 
 ---
 

@@ -33,10 +33,10 @@ Parsed/structured listing data (e.g. for notifications or downstream processing)
 | `price_warm_eur` | REAL | Monthly warm rent (Warmmiete) in EUR (optional). |
 | `rooms` | REAL | Number of rooms (optional). |
 | `description` | TEXT | Listing description (optional). |
-| `raw_json` | TEXT | JSON blob of extra extracted fields (object; never null in extraction). |
+| `details` | TEXT | Human-readable summary of extra details (area, heating, condition, availability, etc.) inferred by the extractor. |
 | `created_at` | TEXT | Insert/update time, `datetime('now')`. |
 
-**Unique index:** `(source, external_id)` — same listing is updated in place (INSERT OR REPLACE). The extractor fills both cold and warm rent when present and always stores extra data in `raw_json` as an object.
+**Unique index:** `(source, external_id)` — same listing is updated in place (INSERT OR REPLACE). The extractor fills both cold and warm rent when present and writes a short details summary when useful.
 
 ---
 
