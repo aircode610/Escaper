@@ -49,12 +49,15 @@ Follow the [Tracing quickstart](https://docs.langchain.com/langsmith/observabili
 ## Running the agent
 
 1. Set **`ANTHROPIC_API_KEY`** in `.env`.
-2. Ensure you have at least one row in **listing_pages** (e.g. run `fetch_listing_pages --from-db --limit 5`).
+2. Ensure you have rows in **listing_pages** (e.g. run `fetch_listing_pages --from-db --limit 5`).
 3. From the **project root**:
 
 ```bash
-# Run on the latest listing page in the DB
+# Process all listing pages in the DB (upserts into listings; table is never cleared)
 python scripts/run_extract_one.py
+
+# Process at most 10 pages
+python scripts/run_extract_one.py --limit 10
 ```
 
 Programmatic usage:
