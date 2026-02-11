@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS listings (
     external_id TEXT NOT NULL,
     address TEXT,
     price_eur REAL,
+    price_warm_eur REAL,
     rooms REAL,
     description TEXT,
     raw_json TEXT,
@@ -66,12 +67,21 @@ def get_connection(db_path: str | Path = DEFAULT_DB_PATH) -> sqlite3.Connection:
     return _get_conn(db_path)
 
 
+def _migrate_listings_add_price_warm(conn: sqlite3.Connection) -> None:
+    """Add price_warm_eur column if missing (migration for existing DBs)."""
+    cur = conn.execute("SELECT name FROM pragma_table_info('listings') WHERE name='price_warm_eur'")
+    if cur.fetchone() is None:
+        conn.execute("ALTER TABLE listings ADD COLUMN price_warm_eur REAL")
+        conn.commit()
+
+
 def init_db(db_path: str | Path = DEFAULT_DB_PATH) -> None:
     """Create DB file and all tables (listings, listing_urls, listing_pages) if they don't exist."""
     conn = _get_conn(db_path)
     try:
         conn.executescript(SCHEMA)
         conn.commit()
+        _migrate_listings_add_price_warm(conn)
     finally:
         conn.close()
 
@@ -101,13 +111,13 @@ def get_table_columns(conn: sqlite3.Connection, table: str) -> list[str]:
 
 
 def insert_listing(conn: sqlite3.Connection, row: dict) -> None:
-    """Insert one listing (dict with source, url, external_id; optional address, price_eur, rooms, description, raw)."""
+    """Insert one listing (source, url, external_id; optional address, price_eur, price_warm_eur, rooms, description, raw)."""
     raw_json = json.dumps(row.get("raw"), ensure_ascii=False) if row.get("raw") else None
     conn.execute(
         """
         INSERT OR REPLACE INTO listings
-        (source, url, external_id, address, price_eur, rooms, description, raw_json)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        (source, url, external_id, address, price_eur, price_warm_eur, rooms, description, raw_json)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             row.get("source"),
@@ -115,6 +125,7 @@ def insert_listing(conn: sqlite3.Connection, row: dict) -> None:
             row.get("external_id"),
             row.get("address"),
             row.get("price_eur"),
+            row.get("price_warm_eur"),
             row.get("rooms"),
             row.get("description"),
             raw_json,
@@ -130,6 +141,7 @@ def row_to_listing(row: tuple) -> dict:
         external_id,
         address,
         price_eur,
+        price_warm_eur,
         rooms,
         description,
         raw_json,
@@ -141,6 +153,7 @@ def row_to_listing(row: tuple) -> dict:
         "external_id": external_id,
         "address": address,
         "price_eur": price_eur,
+        "price_warm_eur": price_warm_eur,
         "rooms": rooms,
         "description": description,
         "raw": raw,
@@ -155,7 +168,7 @@ def get_listings(
     conn = _get_conn(db_path)
     try:
         sql = """
-        SELECT source, url, external_id, address, price_eur, rooms, description, raw_json
+        SELECT source, url, external_id, address, price_eur, price_warm_eur, rooms, description, raw_json
         FROM listings
         ORDER BY created_at DESC
         """

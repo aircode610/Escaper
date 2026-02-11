@@ -22,6 +22,14 @@ DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 DB_PATH = DATA_DIR / "listings.db"
 
 
+def ensure_listings_has_price_warm(conn: sqlite3.Connection) -> None:
+    """Add price_warm_eur to listings if missing (stdlib-only migration for old DBs)."""
+    cur = conn.execute("SELECT name FROM pragma_table_info('listings') WHERE name='price_warm_eur'")
+    if cur.fetchone() is None:
+        conn.execute("ALTER TABLE listings ADD COLUMN price_warm_eur REAL")
+        conn.commit()
+
+
 def get_table_names(conn: sqlite3.Connection) -> list[str]:
     cur = conn.execute(
         "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name"
@@ -83,7 +91,7 @@ def show_table(conn: sqlite3.Connection, table: str, limit: int | None = None) -
 def show_listings_detail(conn: sqlite3.Connection, limit: int | None = None) -> None:
     """Pretty-print listings table (description and raw_json truncated)."""
     sql = """
-        SELECT id, source, url, external_id, address, price_eur, rooms,
+        SELECT id, source, url, external_id, address, price_eur, price_warm_eur, rooms,
                description, raw_json, created_at
         FROM listings
         ORDER BY created_at DESC
@@ -106,6 +114,7 @@ def show_listings_detail(conn: sqlite3.Connection, limit: int | None = None) -> 
             external_id,
             address,
             price_eur,
+            price_warm_eur,
             rooms,
             description,
             raw_json,
@@ -113,14 +122,15 @@ def show_listings_detail(conn: sqlite3.Connection, limit: int | None = None) -> 
         ) = row
         raw = json.loads(raw_json) if raw_json else None
         print("-" * 60)
-        print(f"  id           {id_}")
-        print(f"  source       {source}")
-        print(f"  external_id  {external_id}")
-        print(f"  created_at   {created_at}")
-        print(f"  url          {url}")
-        print(f"  address      {address or '-'}")
-        print(f"  price_eur    {price_eur}")
-        print(f"  rooms        {rooms}")
+        print(f"  id             {id_}")
+        print(f"  source         {source}")
+        print(f"  external_id    {external_id}")
+        print(f"  created_at     {created_at}")
+        print(f"  url            {url}")
+        print(f"  address        {address or '-'}")
+        print(f"  price_eur      {price_eur}")
+        print(f"  price_warm_eur {price_warm_eur}")
+        print(f"  rooms          {rooms}")
         if raw:
             print(f"  raw          {json.dumps(raw, ensure_ascii=False, indent=4)[:500]}...")
         if description:
@@ -173,6 +183,7 @@ def main():
             sys.exit(1)
 
         if args.table == "listings":
+            ensure_listings_has_price_warm(conn)
             show_listings_detail(conn, limit=args.limit)
         else:
             show_table(conn, args.table, limit=args.limit)

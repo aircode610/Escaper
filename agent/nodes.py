@@ -28,10 +28,11 @@ class ExtractedListing(BaseModel):
     """Fields extracted from a listing page (for DB listings table)."""
 
     address: str | None = Field(default=None, description="Full address if given")
-    price_eur: float | None = Field(default=None, description="Monthly cold rent in EUR")
+    price_eur: float | None = Field(default=None, description="Monthly cold rent (Kaltmiete) in EUR")
+    price_warm_eur: float | None = Field(default=None, description="Monthly warm rent (Warmmiete) in EUR")
     rooms: float | None = Field(default=None, description="Number of rooms (e.g. 2.5)")
     description: str | None = Field(default=None, description="Main listing description text")
-    raw: dict | None = Field(default=None, description="Extra key-value pairs from the ad")
+    raw: dict = Field(default_factory=dict, description="Extra key-value pairs from the ad; never null")
 
 
 # ---------- Node: extract one listing page and add to listings ----------
@@ -75,6 +76,7 @@ def extract_listing_node(state: AgentState) -> dict:
                     "external_id": external_id,
                     "address": None,
                     "price_eur": None,
+                    "price_warm_eur": None,
                     "rooms": None,
                     "description": None,
                     "raw": None,
@@ -101,9 +103,10 @@ def extract_listing_node(state: AgentState) -> dict:
         "external_id": external_id,
         "address": out.address,
         "price_eur": out.price_eur,
+        "price_warm_eur": out.price_warm_eur,
         "rooms": out.rooms,
         "description": out.description or None,
-        "raw": out.raw,
+        "raw": out.raw or {},
     }
 
     conn = db.get_connection()

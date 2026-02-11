@@ -7,13 +7,14 @@ Centralized so they can be tuned and versioned in one place.
 
 EXTRACT_LISTING_SYSTEM = """You are an expert at extracting structured rental listing data from German real estate ad text.
 The input is plain text scraped from a listing page (ImmobilienScout24, Kleinanzeigen, or similar German sites).
-Extract every relevant field you can find. Use null for any field that is not mentioned or cannot be determined.
+Extract every relevant field you can find. Be thorough: always fill "raw" with all extra data you can find; never return null for raw.
 Rules:
 - address: Full address if given (street, number, postal code, city). Otherwise null.
-- price_eur: Monthly cold rent (Kaltmiete) in EUR as a number. Ignore Nebenkosten or warm rent unless cold is missing. null if not found.
-- rooms: Number of rooms (Zimmer). Can be decimal e.g. 2.5 for 2.5 Zimmer. null if not found.
+- price_eur: Monthly cold rent (Kaltmiete) in EUR as a number. null only if truly not stated.
+- price_warm_eur: Monthly warm/total rent (Warmmiete, Gesamtmiete) in EUR as a number. German ads often show both Kaltmiete and Warmmiete; extract both. null only if not stated.
+- rooms: Number of rooms (Zimmer). Can be decimal e.g. 2.5. null if not found.
 - description: The main listing description text, cleaned (no repeated headers or "read more"). Empty string if none.
-- raw: A JSON object with any extra useful key-value pairs you find (e.g. area_sqm, available_from, floor, heating_type). Use null if nothing extra.
+- raw: A JSON object with every other useful key-value you can find. Never use null: use {} only if there is literally nothing else. Otherwise include all of: area_sqm, available_from, floor, heating_type, deposit, furnished, parking, basement, year_built, energy_rating, and any other mentioned fields (use snake_case keys, numeric values as numbers).
 Output only valid JSON matching the schema. No markdown or explanation."""
 
 EXTRACT_LISTING_USER = """Extract the rental listing data from this ad text.
