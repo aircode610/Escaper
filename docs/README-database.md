@@ -34,9 +34,12 @@ Parsed/structured listing data (e.g. for notifications or downstream processing)
 | `rooms` | REAL | Number of rooms (optional). |
 | `description` | TEXT | Listing description (optional). |
 | `details` | TEXT | Human-readable summary of extra details (area, heating, condition, availability, etc.) inferred by the extractor. |
+| `scam_score` | REAL | Scam assessment score 0.0–1.0 (0 = likely scam, 1 = likely legit); set by scam-check node. |
+| `scam_flags` | TEXT | JSON array of short flag strings from scam check (optional). |
+| `scam_reasoning` | TEXT | Brief explanation of scam assessment (optional). |
 | `created_at` | TEXT | Insert/update time, `datetime('now')`. |
 
-**Unique index:** `(source, external_id)` — same listing is updated in place (INSERT OR REPLACE). The extractor fills both cold and warm rent when present and writes a short details summary when useful.
+**Unique index:** `(source, external_id)` — same listing is updated in place (INSERT OR REPLACE). The extractor fills both cold and warm rent when present and writes a short details summary when useful. The scam-check node then updates scam_score, scam_flags, and scam_reasoning.
 
 ---
 

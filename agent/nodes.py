@@ -17,11 +17,16 @@ from langchain_core.messages import HumanMessage, SystemMessage
 
 import config
 import db
-from agent.prompts import EXTRACT_LISTING_SYSTEM, format_extract_listing_user
+from agent.prompts import (
+    EXTRACT_LISTING_SYSTEM,
+    SCAM_CHECK_SYSTEM,
+    format_extract_listing_user,
+    format_scam_check_user,
+)
 from agent.state import AgentState
 
 
-# ---------- Structured output schema (matches listings table) ----------
+# ---------- Structured output schemas ----------
 
 
 class ExtractedListing(BaseModel):
@@ -36,6 +41,14 @@ class ExtractedListing(BaseModel):
         default=None,
         description="Short human-readable summary of important extra details (area, heating, condition, availability, deposit, pets, etc.). One or two sentences or bullet-style phrases. Empty string if nothing.",
     )
+
+
+class ScamAssessment(BaseModel):
+    """Scam check result (score 0=likely scam, 1=likely legit)."""
+
+    score: float = Field(ge=0.0, le=1.0, description="0.0 = likely scam, 1.0 = likely legit")
+    flags: list[str] = Field(default_factory=list, description="Short flag strings for issues found")
+    reasoning: str = Field(default="", description="Brief explanation of the assessment")
 
 
 # ---------- Node: extract one listing page and add to listings ----------
@@ -122,3 +135,82 @@ def extract_listing_node(state: AgentState) -> dict:
         conn.close()
 
     return {"extracted": row, "error": None}
+
+
+# ---------- Node: scam check and update listing ----------
+
+
+def _get_scam_llm():
+    """Chat model with structured output for scam assessment."""
+    api_key = config.get_anthropic_api_key()
+    if not api_key:
+        raise RuntimeError("ANTHROPIC_API_KEY not set in .env")
+    model = ChatAnthropic(
+        model="claude-sonnet-4-5-20250929",
+        api_key=api_key,
+        temperature=0,
+    )
+    return model.with_structured_output(ScamAssessment, method="json_schema")
+
+
+def scam_check_node(state: AgentState) -> dict:
+    """
+    Run scam assessment on the extracted listing and update the listing row with scam_score, scam_flags, scam_reasoning.
+    Runs only when state has 'extracted' and no 'error'. Updates state with scam_score, scam_flags, scam_reasoning.
+    """
+    if state.get("error"):
+        return {}
+    extracted = state.get("extracted")
+    if not extracted:
+        return {}
+
+    source = extracted.get("source") or ""
+    external_id = extracted.get("external_id") or ""
+    address = extracted.get("address")
+    price_cold = extracted.get("price_eur")
+    price_warm = extracted.get("price_warm_eur")
+    rooms = extracted.get("rooms")
+    details = extracted.get("details")
+    description = extracted.get("description")
+
+    try:
+        llm = _get_scam_llm()
+        messages = [
+            SystemMessage(content=SCAM_CHECK_SYSTEM),
+            HumanMessage(
+                content=format_scam_check_user(
+                    address=address,
+                    price_cold=price_cold,
+                    price_warm=price_warm,
+                    rooms=rooms,
+                    details=details,
+                    description=description,
+                )
+            ),
+        ]
+        out: ScamAssessment = llm.invoke(messages)
+    except Exception as e:
+        return {"scam_error": str(e), "scam_score": None, "scam_flags": None, "scam_reasoning": None}
+
+    conn = db.get_connection()
+    try:
+        db.update_listing_scam(
+            conn,
+            source=source,
+            external_id=external_id,
+            score=out.score,
+            flags=out.flags or [],
+            reasoning=out.reasoning or "",
+        )
+        conn.commit()
+    except Exception as e:
+        return {"scam_error": str(e), "scam_score": out.score, "scam_flags": out.flags, "scam_reasoning": out.reasoning}
+    finally:
+        conn.close()
+
+    return {
+        "scam_score": out.score,
+        "scam_flags": out.flags,
+        "scam_reasoning": out.reasoning,
+        "scam_error": None,
+    }

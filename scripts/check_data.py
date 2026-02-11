@@ -42,6 +42,19 @@ def ensure_listings_has_details(conn: sqlite3.Connection) -> None:
     conn.commit()
 
 
+def ensure_listings_has_scam(conn: sqlite3.Connection) -> None:
+    """Add scam_score, scam_flags, scam_reasoning if missing (stdlib-only migration)."""
+    cur = conn.execute("SELECT name FROM pragma_table_info('listings')")
+    names = {row[0] for row in cur.fetchall()}
+    if "scam_score" not in names:
+        conn.execute("ALTER TABLE listings ADD COLUMN scam_score REAL")
+    if "scam_flags" not in names:
+        conn.execute("ALTER TABLE listings ADD COLUMN scam_flags TEXT")
+    if "scam_reasoning" not in names:
+        conn.execute("ALTER TABLE listings ADD COLUMN scam_reasoning TEXT")
+    conn.commit()
+
+
 def get_table_names(conn: sqlite3.Connection) -> list[str]:
     cur = conn.execute(
         "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name"
@@ -104,7 +117,7 @@ def show_listings_detail(conn: sqlite3.Connection, limit: int | None = None) -> 
     """Pretty-print listings table (description truncated)."""
     sql = """
         SELECT id, source, url, external_id, address, price_eur, price_warm_eur, rooms,
-               description, details, created_at
+               description, details, scam_score, scam_flags, scam_reasoning, created_at
         FROM listings
         ORDER BY created_at DESC
         """
@@ -130,6 +143,9 @@ def show_listings_detail(conn: sqlite3.Connection, limit: int | None = None) -> 
             rooms,
             description,
             details,
+            scam_score,
+            scam_flags,
+            scam_reasoning,
             created_at,
         ) = row
         print("-" * 60)
@@ -144,6 +160,12 @@ def show_listings_detail(conn: sqlite3.Connection, limit: int | None = None) -> 
         print(f"  rooms          {rooms}")
         if details:
             print(f"  details        {details[:500]}{'...' if len(details) > 500 else ''}")
+        if scam_score is not None:
+            print(f"  scam_score     {scam_score}")
+        if scam_flags:
+            print(f"  scam_flags     {scam_flags}")
+        if scam_reasoning:
+            print(f"  scam_reasoning {scam_reasoning[:300]}{'...' if len(scam_reasoning) > 300 else ''}")
         if description:
             print(f"  description  ({len(description)} chars)")
             for line in description.strip().split("\n")[:15]:
@@ -196,6 +218,7 @@ def main():
         if args.table == "listings":
             ensure_listings_has_price_warm(conn)
             ensure_listings_has_details(conn)
+            ensure_listings_has_scam(conn)
             show_listings_detail(conn, limit=args.limit)
         else:
             show_table(conn, args.table, limit=args.limit)
