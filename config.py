@@ -52,3 +52,19 @@ def is_langsmith_tracing_enabled() -> bool:
 def get_langsmith_project() -> str:
     """Project name for LangSmith traces (default: escaper)."""
     return os.environ.get("LANGCHAIN_PROJECT") or os.environ.get("LANGCHAIN_PROJECT_NAME") or "escaper"
+
+
+def setup_langsmith_tracing() -> None:
+    """
+    Call once at app startup (before importing langchain/langgraph) so traces appear.
+    Loads .env via load_dotenv() and sets LANGCHAIN_TRACING_V2, LANGCHAIN_ENDPOINT, LANGCHAIN_PROJECT
+    so LangSmith receives traces. If LANGCHAIN_API_KEY or LANGSMITH_API_KEY is set and
+    LANGCHAIN_TRACING_V2 is not, enables tracing automatically.
+    """
+    load_dotenv()
+    if get_langsmith_api_key() and not is_langsmith_tracing_enabled():
+        os.environ["LANGCHAIN_TRACING_V2"] = "true"
+    if not os.environ.get("LANGCHAIN_ENDPOINT") and not os.environ.get("LANGSMITH_ENDPOINT"):
+        os.environ["LANGCHAIN_ENDPOINT"] = get_langsmith_endpoint()
+    if not os.environ.get("LANGCHAIN_PROJECT") and not os.environ.get("LANGCHAIN_PROJECT_NAME"):
+        os.environ["LANGCHAIN_PROJECT"] = get_langsmith_project()

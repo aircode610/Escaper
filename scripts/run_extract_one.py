@@ -10,6 +10,10 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
+# Load .env and LangSmith settings before any langchain/agent import (required for tracing)
+import config  # noqa: E402
+config.setup_langsmith_tracing()
+
 import db
 from agent import run_on_listing_page
 

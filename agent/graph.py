@@ -10,12 +10,9 @@ from langgraph.graph import END, START, StateGraph
 from agent.nodes import extract_listing_node
 from agent.state import AgentState
 
-# Ensure .env is loaded and LangSmith defaults (EU endpoint, project "escaper")
+# Ensure LangSmith env is set when this module loads (if config not already run first)
 import config  # noqa: E402
-if not os.environ.get("LANGCHAIN_PROJECT") and not os.environ.get("LANGCHAIN_PROJECT_NAME"):
-    os.environ.setdefault("LANGCHAIN_PROJECT", "escaper")
-if not os.environ.get("LANGCHAIN_ENDPOINT"):
-    os.environ.setdefault("LANGCHAIN_ENDPOINT", config.get_langsmith_endpoint())
+config.setup_langsmith_tracing()
 
 
 def build_graph():

@@ -44,7 +44,7 @@ To trace all agent and LLM calls in LangSmith:
 
 3. Run the agent as usual. Traces appear in your LangSmith dashboard (EU or US) under the project name.
 
-No code changes are required; the app defaults to the **EU** endpoint if `LANGCHAIN_ENDPOINT` is not set.
+**Important:** Env vars must be set *before* any langchain/langgraph import. The script `run_extract_one.py` does this by importing `config` and calling `config.setup_langsmith_tracing()` first. If you run the agent from other code, do the same (e.g. `import config; config.setup_langsmith_tracing()` before `from agent import ...`). If you set `LANGCHAIN_API_KEY` (or `LANGSMITH_API_KEY`), tracing is turned on automatically when not set.
 
 ---
 

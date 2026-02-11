@@ -38,11 +38,12 @@ class ExtractedListing(BaseModel):
 
 
 def _get_extract_llm():
+    """Chat model with structured output (requires Claude Sonnet 4.5 or Opus 4.1+)."""
     api_key = config.get_anthropic_api_key()
     if not api_key:
         raise RuntimeError("ANTHROPIC_API_KEY not set in .env")
     model = ChatAnthropic(
-        model="claude-sonnet-4-20250514",
+        model="claude-sonnet-4-5-20250929",
         api_key=api_key,
         temperature=0,
     )
