@@ -28,6 +28,26 @@ Extracted fields match the listings schema: `address`, `price_eur`, `rooms`, `de
 
 ---
 
+## LangSmith tracing
+
+To trace all agent and LLM calls in LangSmith:
+
+1. **EU:** Sign up at [https://eu.smith.langchain.com](https://eu.smith.langchain.com) and create an API key.  
+   **US:** Sign up at [https://smith.langchain.com](https://smith.langchain.com).
+
+2. Add to `.env`:
+   - `LANGCHAIN_TRACING_V2=true`
+   - `LANGCHAIN_API_KEY=<your-key>`
+   - `LANGSMITH_ENDPOINT` – **EU (default):** `https://eu.api.smith.langchain.com`  
+     **US:** `https://api.smith.langchain.com`
+   - `LANGCHAIN_PROJECT=escaper` (optional; default is `escaper`)
+
+3. Run the agent as usual. Traces appear in your LangSmith dashboard (EU or US) under the project name.
+
+No code changes are required; the app defaults to the **EU** endpoint if `LANGCHAIN_ENDPOINT` is not set.
+
+---
+
 ## Running the agent
 
 1. Set **`ANTHROPIC_API_KEY`** in `.env`.
