@@ -1,17 +1,15 @@
 """
 LangGraph workflow for the Escaper agent.
-LangSmith tracing: set LANGCHAIN_TRACING_V2=true and LANGCHAIN_API_KEY in .env to trace all runs.
+LangSmith: set LANGSMITH_TRACING=true and LANGSMITH_API_KEY in .env to trace runs.
 """
 
-import os
+import config  # noqa: E402
 
 from langgraph.graph import END, START, StateGraph
 
 from agent.nodes import extract_listing_node
 from agent.state import AgentState
 
-# Ensure LangSmith env is set when this module loads (if config not already run first)
-import config  # noqa: E402
 config.setup_langsmith_tracing()
 
 
@@ -27,18 +25,10 @@ def build_graph():
     return graph.compile()
 
 
-# Compiled graph instance (call build_graph() to get a fresh one if needed)
 app = build_graph()
 
 
 def run_on_listing_page(listing_page: dict) -> dict:
-    """
-    Run the agent on one listing_page (source, url, external_id, content).
-    Returns the final state (extracted, error).
-    LangSmith: set LANGCHAIN_TRACING_V2=true and LANGCHAIN_API_KEY in .env to trace all runs.
-    """
-    initial: AgentState = {
-        "listing_page": listing_page,
-    }
-    result = app.invoke(initial)
-    return result
+    """Run the agent on one listing_page (source, url, external_id, content). Returns final state (extracted, error)."""
+    initial: AgentState = {"listing_page": listing_page}
+    return app.invoke(initial)

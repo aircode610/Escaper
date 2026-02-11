@@ -28,43 +28,47 @@ def get_anthropic_api_key() -> str | None:
 
 
 # ---------- LangSmith tracing (agent) ----------
+# https://docs.langchain.com/langsmith/observability-quickstart
+# https://docs.langchain.com/langsmith/trace-with-langgraph
 
 
 def get_langsmith_api_key() -> str | None:
-    """LangSmith API key for tracing. EU: https://eu.smith.langchain.com | US: https://smith.langchain.com"""
-    return os.environ.get("LANGCHAIN_API_KEY") or os.environ.get("LANGSMITH_API_KEY") or None
+    """LangSmith API key. Get one at EU: https://eu.smith.langchain.com | US: https://smith.langchain.com"""
+    return os.environ.get("LANGSMITH_API_KEY") or None
 
 
 def get_langsmith_endpoint() -> str:
-    """LangSmith API endpoint. Defaults to EU (eu.api.smith.langchain.com). US: https://api.smith.langchain.com"""
-    return (
-        os.environ.get("LANGCHAIN_ENDPOINT")
-        or os.environ.get("LANGSMITH_ENDPOINT")
-        or "https://eu.api.smith.langchain.com"
-    )
+    """LangSmith API endpoint. EU: https://eu.api.smith.langchain.com | US: https://api.smith.langchain.com"""
+    return os.environ.get("LANGSMITH_ENDPOINT") or "https://eu.api.smith.langchain.com"
 
 
 def is_langsmith_tracing_enabled() -> bool:
-    """True if LangSmith tracing is enabled via LANGCHAIN_TRACING_V2=true."""
-    return os.environ.get("LANGCHAIN_TRACING_V2", "").lower() in ("true", "1", "yes")
+    """True if LangSmith tracing is enabled (LANGSMITH_TRACING=true)."""
+    return os.environ.get("LANGSMITH_TRACING", "").lower() in ("true", "1", "yes")
 
 
 def get_langsmith_project() -> str:
     """Project name for LangSmith traces (default: escaper)."""
-    return os.environ.get("LANGCHAIN_PROJECT") or os.environ.get("LANGCHAIN_PROJECT_NAME") or "escaper"
+    return os.environ.get("LANGSMITH_PROJECT") or "escaper"
 
 
 def setup_langsmith_tracing() -> None:
-    """
-    Call once at app startup (before importing langchain/langgraph) so traces appear.
-    Loads .env via load_dotenv() and sets LANGCHAIN_TRACING_V2, LANGCHAIN_ENDPOINT, LANGCHAIN_PROJECT
-    so LangSmith receives traces. If LANGCHAIN_API_KEY or LANGSMITH_API_KEY is set and
-    LANGCHAIN_TRACING_V2 is not, enables tracing automatically.
-    """
+    """Load .env and set LANGSMITH_* / LANGCHAIN_* so LangSmith tracing works. Call before importing langchain/langgraph."""
     load_dotenv()
-    if get_langsmith_api_key() and not is_langsmith_tracing_enabled():
+    api_key = get_langsmith_api_key()
+    if api_key and not is_langsmith_tracing_enabled():
+        os.environ["LANGSMITH_TRACING"] = "true"
+    endpoint = get_langsmith_endpoint()
+    if not os.environ.get("LANGSMITH_ENDPOINT"):
+        os.environ["LANGSMITH_ENDPOINT"] = endpoint
+    project = get_langsmith_project()
+    if not os.environ.get("LANGSMITH_PROJECT"):
+        os.environ["LANGSMITH_PROJECT"] = project
+    if is_langsmith_tracing_enabled():
         os.environ["LANGCHAIN_TRACING_V2"] = "true"
-    if not os.environ.get("LANGCHAIN_ENDPOINT") and not os.environ.get("LANGSMITH_ENDPOINT"):
-        os.environ["LANGCHAIN_ENDPOINT"] = get_langsmith_endpoint()
-    if not os.environ.get("LANGCHAIN_PROJECT") and not os.environ.get("LANGCHAIN_PROJECT_NAME"):
-        os.environ["LANGCHAIN_PROJECT"] = get_langsmith_project()
+    if api_key:
+        os.environ["LANGCHAIN_API_KEY"] = api_key
+    if not os.environ.get("LANGCHAIN_ENDPOINT"):
+        os.environ["LANGCHAIN_ENDPOINT"] = endpoint
+    if not os.environ.get("LANGCHAIN_PROJECT"):
+        os.environ["LANGCHAIN_PROJECT"] = project

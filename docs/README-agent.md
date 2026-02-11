@@ -30,21 +30,19 @@ Extracted fields match the listings schema: `address`, `price_eur`, `rooms`, `de
 
 ## LangSmith tracing
 
-To trace all agent and LLM calls in LangSmith:
+Follow the [Tracing quickstart](https://docs.langchain.com/langsmith/observability-quickstart) and [Trace with LangGraph](https://docs.langchain.com/langsmith/trace-with-langgraph):
 
-1. **EU:** Sign up at [https://eu.smith.langchain.com](https://eu.smith.langchain.com) and create an API key.  
-   **US:** Sign up at [https://smith.langchain.com](https://smith.langchain.com).
+1. **Sign up and create an API key**  
+   EU: [https://eu.smith.langchain.com](https://eu.smith.langchain.com) · US: [https://smith.langchain.com](https://smith.langchain.com)
 
-2. Add to `.env`:
-   - `LANGCHAIN_TRACING_V2=true`
-   - `LANGCHAIN_API_KEY=<your-key>`
-   - `LANGSMITH_ENDPOINT` – **EU (default):** `https://eu.api.smith.langchain.com`  
-     **US:** `https://api.smith.langchain.com`
-   - `LANGCHAIN_PROJECT=escaper` (optional; default is `escaper`)
+2. **Set in `.env`** (must be set *before* any langchain/langgraph import):
+   - `LANGSMITH_TRACING=true`
+   - `LANGSMITH_API_KEY=<your-langsmith-api-key>`
+   - (optional) `LANGSMITH_PROJECT=escaper` — else traces go to project "default"
+   - (optional) `LANGSMITH_WORKSPACE_ID=<id>` — if your API key is linked to multiple workspaces
+   - **EU:** `LANGSMITH_ENDPOINT=https://eu.api.smith.langchain.com`
 
-3. Run the agent as usual. Traces appear in your LangSmith dashboard (EU or US) under the project name.
-
-**Important:** Env vars must be set *before* any langchain/langgraph import. The script `run_extract_one.py` does this by importing `config` and calling `config.setup_langsmith_tracing()` first. If you run the agent from other code, do the same (e.g. `import config; config.setup_langsmith_tracing()` before `from agent import ...`). If you set `LANGCHAIN_API_KEY` (or `LANGSMITH_API_KEY`), tracing is turned on automatically when not set.
+3. Run the agent. Call `config.setup_langsmith_tracing()` before importing the agent so env vars are set. Traces appear in your LangSmith project (EU or US).
 
 ---
 
