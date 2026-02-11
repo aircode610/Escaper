@@ -28,57 +28,42 @@ Each entry has: `base_url`, `search_path` (with `{city}`), `link_contains`, `id_
 
 ### 1. Fetch listing URLs
 
-**`scripts/fetch_listing_urls.py`** – Scrapes search pages for a city and saves all listing URLs and external IDs.
+**`scripts/fetch_listing_urls.py`** – Scrapes search pages for a city and saves all listing URLs and external IDs to the **database** (table `listing_urls`). Optionally export to JSON with `-o`.
 
 ```bash
-python scripts/fetch_listing_urls.py                    # city Bremen → data/listing_urls.json
-python scripts/fetch_listing_urls.py Berlin               # city Berlin
-python scripts/fetch_listing_urls.py Berlin -o data/berlin_urls.json   # custom output path
+python scripts/fetch_listing_urls.py                    # city Bremen → DB
+python scripts/fetch_listing_urls.py Berlin              # city Berlin
+python scripts/fetch_listing_urls.py Berlin -o data/berlin_urls.json   # also write JSON
 ```
 
-**Output:** JSON file (default `data/listing_urls.json`) with an array of:
-
-```json
-{"source": "immobilienscout24", "url": "https://...", "external_id": "..."}
-```
+**Output:** Saved to DB (`listing_urls`). Each row: `source`, `url`, `external_id`, `city`, `created_at`. With `-o`, also writes a JSON array of `{"source", "url", "external_id"}`.
 
 ---
 
 ### 2. Fetch listing pages
 
-**`scripts/fetch_listing_pages.py`** – Takes the URLs JSON from step 1, fetches each listing page, and saves HTML or plain text.
+**`scripts/fetch_listing_pages.py`** – Fetches each listing page and saves HTML or text to the **database** (table `listing_pages`). URLs can come from a JSON file or from the DB (`--from-db`).
 
 ```bash
+# From JSON file (e.g. exported with fetch_listing_urls -o)
 python scripts/fetch_listing_pages.py data/listing_urls.json
-python scripts/fetch_listing_pages.py data/listing_urls.json -o data/listing_pages.json
-python scripts/fetch_listing_pages.py data/listing_urls.json --max-concurrent 10
+python scripts/fetch_listing_pages.py data/listing_urls.json -o data/pages.json
+
+# From DB (no file needed)
+python scripts/fetch_listing_pages.py --from-db
+python scripts/fetch_listing_pages.py --from-db --city Bremen --max-concurrent 10
+python scripts/fetch_listing_pages.py --from-db --limit 5   # fetch only first 5 URLs (saves tokens)
 ```
 
-**Output:** JSON file (default `data/listing_pages.json`).
+**Output:** Saved to DB (`listing_pages`). Each row: `source`, `url`, `external_id`, `content_type` (`html` or `text`), `content`, `created_at`. Use `-o` to also export JSON.
 
-| Mode | Flag | Stored field | Description |
+| Mode | Flag | content_type | Description |
 |------|------|--------------|-------------|
-| Default | *(none)* | `html` | Main content HTML only (smaller than full page) |
+| Default | *(none)* | `text` | Plain text only (smallest; recommended for DB) |
+| Main content HTML | `--html` | `html` | Main content HTML only |
 | Full page | `--full` | `html` | Full page HTML |
-| Text only | `--text` | `text` | Plain text only (smallest; no HTML) |
 
-Examples:
-
-```bash
-# Main content HTML (default)
-python scripts/fetch_listing_pages.py data/listing_urls.json
-
-# Full page HTML
-python scripts/fetch_listing_pages.py data/listing_urls.json --full
-
-# Plain text only (smallest file)
-python scripts/fetch_listing_pages.py data/listing_urls.json --text -o data/listing_text.json
-```
-
-**Output shape:**
-
-- With HTML: `{"source", "url", "external_id", "html"}` (`html` is `null` on fetch failure).
-- With `--text`: `{"source", "url", "external_id", "text"}` (`text` is `null` on failure).
+For full DB schema and how to inspect data, see **[README-database.md](README-database.md)**.
 
 ---
 
