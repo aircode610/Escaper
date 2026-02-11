@@ -13,8 +13,13 @@ def get_scrapfly_api_key() -> str | None:
 
 
 def get_telegram_bot_token() -> str | None:
-    """Telegram Bot token for notifications and user config."""
+    """Telegram Bot token for notifications."""
     return os.environ.get("TELEGRAM_BOT_TOKEN") or None
+
+
+def get_telegram_chat_id() -> str | None:
+    """Telegram chat/channel ID or @username to send listing notifications to."""
+    return os.environ.get("TELEGRAM_CHAT_ID") or None
 
 
 def get_google_maps_api_key() -> str | None:

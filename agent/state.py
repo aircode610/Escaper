@@ -17,6 +17,8 @@ class AgentState(TypedDict, total=False):
     - scam_score, scam_flags, scam_reasoning: Set by scam_check node.
     - scam_error: Error message if scam check failed.
     - enricher_error: Error message if enricher node failed.
+    - telegram_sent: True if the listing was sent to Telegram.
+    - telegram_error: Error message if Telegram send failed.
     """
 
     listing_page: dict[str, Any]
@@ -27,3 +29,5 @@ class AgentState(TypedDict, total=False):
     scam_reasoning: str
     scam_error: str
     enricher_error: str
+    telegram_sent: bool
+    telegram_error: str

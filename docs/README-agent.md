@@ -47,8 +47,7 @@ Prompts are in `prompts.py` (`SCAM_CHECK_SYSTEM`, `SCAM_CHECK_USER`).
 - **Input (state):** Runs after `scam_check`; uses `extracted` listing data.
 - **Behaviour:**
   1. **Distances:** Google Maps Geocoding + Distance Matrix — walking and public transit (9am weekday) from listing address to Constructor University (Bremen) and to Bremen Hauptbahnhof.
-  2. **Nearby places:** Places API (Nearby Search) — restaurants, cafes, parks, supermarkets within ~15 min walk (~1.2 km).
-  3. **LLM:** Translates description to English (`description_en`), writes a short neighbourhood summary in English (`neighbourhood_vibe`), and assigns a value-for-money score 0–1 (`value_score`) given rent, size, and amenities.
+  2. **LLM:** Translates description to English (`description_en`), writes a short neighbourhood summary in English (`neighbourhood_vibe`), and assigns a value-for-money score 0–1 (`value_score`) given rent, size, and amenities.
 - **Output:** Updates the listing row with all enrichment fields. Sets `enricher_error` on failure.
 
 Requires **GOOGLE_MAPS_API_KEY** in `.env`. Enable in Google Cloud Console:
@@ -58,6 +57,18 @@ Requires **GOOGLE_MAPS_API_KEY** in `.env`. Enable in Google Cloud Console:
 - **Routes API** — transit matrix (one request for all destinations)
 
 Maps client: `agent/maps_client.py`. Test with `python scripts/test_maps_client.py`.
+
+---
+
+## Fourth node: telegram
+
+**Node:** `telegram`
+
+- **Input (state):** Runs after `enricher`; uses `listing_page` (or `extracted`) for `source` and `external_id`.
+- **Behaviour:** Loads the listing from the DB (with all enrichment), builds a compact message and a details file, and sends both to Telegram via the Bot API (`sendMessage` + `sendDocument`). No-op if `TELEGRAM_BOT_TOKEN` or `TELEGRAM_CHAT_ID` is not set.
+- **Output (state):** `telegram_sent` (true if sent), or `telegram_error` (message on failure).
+
+See **`docs/README-telegram.md`** for setup and pipeline.
 
 ---
 

@@ -26,6 +26,7 @@ from agent.prompts import (
     format_scam_check_user,
 )
 from agent.state import AgentState
+from agent.telegram_client import send_listing_to_telegram
 from agent.maps_client import (
     DEFAULT_HBF,
     DEFAULT_UNIVERSITY,
@@ -356,3 +357,39 @@ def enricher_node(state: AgentState) -> dict:
         conn.close()
 
     return {"enricher_error": None}
+
+
+def telegram_node(state: AgentState) -> dict:
+    """
+    After enricher: load listing from DB and send a compact message + details file to Telegram.
+    Requires TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID in .env. No-op if either is missing.
+    """
+    out: dict = {}
+    page = state.get("listing_page") or {}
+    source = page.get("source") or (state.get("extracted") or {}).get("source") or ""
+    external_id = page.get("external_id") or (state.get("extracted") or {}).get("external_id") or ""
+    if not source or not external_id:
+        out["telegram_error"] = "Missing source or external_id"
+        return out
+
+    conn = db.get_connection()
+    try:
+        listing = db.get_listing(conn, source, external_id)
+    finally:
+        conn.close()
+
+    if not listing:
+        out["telegram_error"] = "Listing not found in DB"
+        return out
+
+    token = config.get_telegram_bot_token()
+    chat_id = config.get_telegram_chat_id()
+    if not token or not chat_id:
+        return out
+
+    try:
+        send_listing_to_telegram(listing, token, chat_id)
+        out["telegram_sent"] = True
+    except Exception as e:
+        out["telegram_error"] = str(e)
+    return out

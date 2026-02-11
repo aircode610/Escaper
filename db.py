@@ -301,6 +301,24 @@ def row_to_listing(row: tuple) -> dict:
     }
 
 
+LISTING_SELECT_COLS = """
+    source, url, external_id, address, price_eur, price_warm_eur, rooms, description, details,
+    scam_score, scam_flags, scam_reasoning,
+    dist_university_walk_mins, dist_university_transit_mins, dist_hbf_walk_mins, dist_hbf_transit_mins,
+    description_en, neighbourhood_vibe, nearby_places, value_score
+"""
+
+
+def get_listing(conn: sqlite3.Connection, source: str, external_id: str) -> dict | None:
+    """Return one listing by source and external_id, or None if not found."""
+    cur = conn.execute(
+        f"SELECT {LISTING_SELECT_COLS.strip()} FROM listings WHERE source = ? AND external_id = ?",
+        (source, external_id),
+    )
+    row = cur.fetchone()
+    return row_to_listing(row) if row else None
+
+
 def get_listings(
     db_path: str | Path = DEFAULT_DB_PATH,
     limit: int | None = None,
@@ -308,11 +326,8 @@ def get_listings(
     """Return all listings sorted by latest date first (created_at DESC)."""
     conn = _get_conn(db_path)
     try:
-        sql = """
-        SELECT source, url, external_id, address, price_eur, price_warm_eur, rooms, description, details,
-               scam_score, scam_flags, scam_reasoning,
-               dist_university_walk_mins, dist_university_transit_mins, dist_hbf_walk_mins, dist_hbf_transit_mins,
-               description_en, neighbourhood_vibe, nearby_places, value_score
+        sql = f"""
+        SELECT {LISTING_SELECT_COLS}
         FROM listings
         ORDER BY created_at DESC
         """
